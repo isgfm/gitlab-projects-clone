@@ -19,6 +19,7 @@ import javax.annotation.PostConstruct;
 import java.io.*;
 import java.nio.charset.Charset;
 import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * 通过gitlab Api自动下载gitLab上的所有项目
@@ -34,6 +35,15 @@ public class GitlabProjectCloneService {
 
     @Value("${git.projectDir}")
     private String projectDir;
+    
+    @Value("${git.excluGroupId}")
+    private String excluGroupId;
+    
+    @Value("${git.excluProjectId}")
+    private String excluProjectId;
+    
+    @Value("${git.cloneGroupId}")
+    private String cloneGroupId;
 
     ObjectMapper objectMapper = new ObjectMapper();
 
@@ -45,14 +55,22 @@ public class GitlabProjectCloneService {
         File execDir = new File(projectDir);
         System.out.println("start get gitlab projects");
         List<GitGroup> groups = getGroups();
+        List<String> excluGroupIdList = splitBySemi(excluGroupId);
+        List<String> excluProjectIdList = splitBySemi(excluProjectId);
+        List<String> cloneGroupIdList = splitBySemi(cloneGroupId);
         try {
             System.out.println(objectMapper.writeValueAsString(groups));
         } catch (JsonProcessingException e) {
             e.printStackTrace();
         }
-        for (GitGroup group : groups) {
-            List<GitProject> projects = getProjectsByGroup(group.getName());
+        List<GitGroup> filterGroups = filterGroup(groups,cloneGroupIdList,excluGroupIdList);
+        for (GitGroup group : filterGroups) {
+            String groupId = group.getId().toString();
+            List<GitProject> projects = getProjectsByGroup(groupId);
             for (GitProject project : projects) {
+                if(excluProjectIdList.contains(project.getId())){
+                    continue;
+                }
                 String lastActivityBranchName = getLastActivityBranchName(project.getId());
                 if (StringUtils.isEmpty(lastActivityBranchName)) {
                     System.out.println("branches is empty, break project...");
@@ -70,7 +88,7 @@ public class GitlabProjectCloneService {
      * @return
      */
     private List<GitProject> getAllProjects() {
-        String url = gitlabUrl + "/api/v3/projects?per_page={per_page}&private_token={private_token}";
+        String url = gitlabUrl + "/api/v4/projects?per_page={per_page}&private_token={private_token}";
         Map<String, String> uriVariables = new HashMap<>();
         uriVariables.put("per_page", "100");
         uriVariables.put("private_token", privateToken);
@@ -86,6 +104,34 @@ public class GitlabProjectCloneService {
         }
         return null;
     }
+    
+    /**
+     * GitlabProjectCloneService
+     *
+     * Description 根据配置配置要clone哪些group的，排除哪些group的
+     * @param groups
+     * @param cloneGroupIdList
+     * @param excluGroupIdList
+     * @return
+     * @author guofeiming
+     * @date 2022/3/24 14:15
+     * @version 1.0.0
+     */
+    private List<GitGroup> filterGroup(List<GitGroup> groups,List<String> cloneGroupIdList,List<String> excluGroupIdList){
+        List<GitGroup> filteredGroup = groups.stream().filter(group->!excluGroupIdList.contains(group.getId())).collect(Collectors.toList());
+        if(CollectionUtils.isEmpty(cloneGroupIdList)){
+            return filteredGroup;
+        }
+        return filteredGroup.stream().filter(group->cloneGroupIdList.contains(group.getId())).collect(Collectors.toList());
+    }
+    
+    private List<String> splitBySemi(String str){
+        if(StringUtils.isEmpty(str)){
+            return Collections.EMPTY_LIST;
+        }
+        return Arrays.asList(str.split(":"));
+    
+    }
 
     /**
      * 获取指定分组下的项目
@@ -94,7 +140,7 @@ public class GitlabProjectCloneService {
      * @return
      */
     private List<GitProject> getProjectsByGroup(String group) {
-        String url = gitlabUrl + "/api/v3/groups/{group}/projects?per_page={per_page}&private_token={private_token}";
+        String url = gitlabUrl + "/api/v4/groups/{group}/projects?per_page={per_page}&private_token={private_token}";
         Map<String, String> uriVariables = new HashMap<>();
         uriVariables.put("group", group);
         uriVariables.put("per_page", "100");
@@ -118,7 +164,7 @@ public class GitlabProjectCloneService {
      * @return
      */
     private List<GitGroup> getGroups() {
-        String url = gitlabUrl + "/api/v3/groups?private_token={private_token}";
+        String url = gitlabUrl + "/api/v4/groups?private_token={private_token}";
         Map<String, String> uriVariables = new HashMap<>();
         uriVariables.put("private_token", privateToken);
         HttpHeaders headers = new HttpHeaders();
@@ -157,7 +203,7 @@ public class GitlabProjectCloneService {
      * @return
      */
     private List<GitBranch> getBranches(Long projectId) {
-        String url = gitlabUrl + "/api/v3/projects/{projectId}/repository/branches?private_token={privateToken}";
+        String url = gitlabUrl + "/api/v4/projects/{projectId}/repository/branches?private_token={privateToken}";
         Map<String, Object> uriVariables = new HashMap<>();
         uriVariables.put("projectId", projectId);
         uriVariables.put("privateToken", privateToken);
