@@ -76,7 +76,7 @@ public class GitlabProjectCloneService {
         } catch (JsonProcessingException e) {
             e.printStackTrace();
         }
-        List<GitGroup> filterGroups = filterGroup(groups,cloneGroupIdList,excluGroupIdList);
+        List<GitGroup> filterGroups = filterGroup(groups,cloneGroupIdList,excluGroupIdList,groupUrlStr);
         for (GitGroup group : filterGroups) {
             String groupId = group.getId().toString();
             List<GitProject> projects = getProjectsByGroup(groupId);
