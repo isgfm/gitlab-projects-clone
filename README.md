@@ -17,13 +17,16 @@ gitlab有提供api来获取git数据，利用这些信息clone项目
 
 ### 步骤：
 
+####tips：
+windows可能会出现文件名过长报错，先执行git config --global core.longpaths true
+
 #### 1、申请gitlab token
 
  进入gitlab Settings页面, 点击Access Tokens标签
 
 ![image-20200429165609200](https://tva1.sinaimg.cn/large/007S8ZIlgy1geaqonuvnmj32k20qu7fs.jpg)
 
-
+配置application.properties
 
 #### 2 、实现逻辑
 
@@ -31,13 +34,17 @@ gitlab有提供api来获取git数据，利用这些信息clone项目
 
 - 2、遍历分组列表
 
-- 3、通过指定分组名称获取项目列表
+- 3、通过配置过滤分组 
 
-- 4、遍历项目列表
+- 4、通过分组id获取项目列表
 
-- 5、通过指定项目ID获取最近修改的分支名称
+- 5、通过配置过滤项目 
 
-- 6、克隆指定分支的项目到指定目录
+- 6、遍历项目列表
+
+- 7、通过指定项目ID获取最近修改的分支名称
+
+- 8、克隆指定分支的项目到指定目录
 
   
 
@@ -248,4 +255,4 @@ public class GitlabProjectCloneService {
 
 ```
 
-代码github地址：[https://github.com/huchao1009/gitlab-projects-clone](https://github.com/huchao1009/gitlab-projects-clone)
+代码github地址：[https://github.com/isgfm/gitlab-projects-clone.git](https://github.com/huchao1009/gitlab-projects-clone)
