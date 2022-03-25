@@ -19,6 +19,11 @@ import javax.annotation.PostConstruct;
 import java.io.*;
 import java.nio.charset.Charset;
 import java.util.*;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 /**
@@ -46,6 +51,11 @@ public class GitlabProjectCloneService {
     private String cloneGroupId;
 
     ObjectMapper objectMapper = new ObjectMapper();
+    
+    private final BlockingQueue<Runnable> blockQueue = new LinkedBlockingQueue<Runnable>(1000);
+    
+    private final ExecutorService pool = new ThreadPoolExecutor(2, 2, 0L, TimeUnit.MILLISECONDS,
+            blockQueue, new ThreadPoolExecutor.CallerRunsPolicy());
 
     @Autowired
     RestTemplate restTemplate;
@@ -68,7 +78,7 @@ public class GitlabProjectCloneService {
             String groupId = group.getId().toString();
             List<GitProject> projects = getProjectsByGroup(groupId);
             for (GitProject project : projects) {
-                if(excluProjectIdList.contains(project.getId())){
+                if(excluProjectIdList.contains(project.getId().toString())){
                     continue;
                 }
                 String lastActivityBranchName = getLastActivityBranchName(project.getId());
@@ -118,11 +128,11 @@ public class GitlabProjectCloneService {
      * @version 1.0.0
      */
     private List<GitGroup> filterGroup(List<GitGroup> groups,List<String> cloneGroupIdList,List<String> excluGroupIdList){
-        List<GitGroup> filteredGroup = groups.stream().filter(group->!excluGroupIdList.contains(group.getId())).collect(Collectors.toList());
+        List<GitGroup> filteredGroup = groups.stream().filter(group->!excluGroupIdList.contains(group.getId().toString())).collect(Collectors.toList());
         if(CollectionUtils.isEmpty(cloneGroupIdList)){
             return filteredGroup;
         }
-        return filteredGroup.stream().filter(group->cloneGroupIdList.contains(group.getId())).collect(Collectors.toList());
+        return filteredGroup.stream().filter(group->cloneGroupIdList.contains(group.getId().toString())).collect(Collectors.toList());
     }
     
     private List<String> splitBySemi(String str){
@@ -241,14 +251,29 @@ public class GitlabProjectCloneService {
         System.out.println("start exec command : " + command);
         try {
             Process exec = Runtime.getRuntime().exec(command, null, execDir);
+            cleanStream(exec.getInputStream());
+            cleanStream(exec.getErrorStream());
             exec.waitFor();
-            String successResult = StreamUtils.copyToString(exec.getInputStream(), Charset.forName("UTF-8"));
-            String errorResult = StreamUtils.copyToString(exec.getErrorStream(),Charset.forName("UTF-8"));
-            System.out.println("successResult: " + successResult);
-            System.out.println("errorResult: " + errorResult);
             System.out.println("================================");
         } catch (Exception e) {
             e.printStackTrace();
         }
+    }
+    
+    private void cleanStream(InputStream stream){
+        pool.execute(new Runnable() {
+            @Override
+            public void run() {
+                String line = null;
+                try(BufferedReader in = new BufferedReader(new InputStreamReader(stream,"UTF-8"))){
+                    while ((line = in.readLine())!=null){
+                        System.out.println(line);
+                    }
+                }catch (IOException e){
+                    System.out.println(e.getMessage());
+                }
+        
+            }
+        });
     }
 }
