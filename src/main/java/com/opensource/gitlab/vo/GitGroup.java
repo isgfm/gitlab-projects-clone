@@ -8,4 +8,5 @@ public class GitGroup {
     String name;
     String path;
     String description;
+    String web_url;
 }

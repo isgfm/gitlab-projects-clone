@@ -49,6 +49,9 @@ public class GitlabProjectCloneService {
     
     @Value("${git.cloneGroupId}")
     private String cloneGroupId;
+    
+    @Value("${git.groupUrlStr}")
+    private String groupUrlStr;
 
     ObjectMapper objectMapper = new ObjectMapper();
     
@@ -127,8 +130,12 @@ public class GitlabProjectCloneService {
      * @date 2022/3/24 14:15
      * @version 1.0.0
      */
-    private List<GitGroup> filterGroup(List<GitGroup> groups,List<String> cloneGroupIdList,List<String> excluGroupIdList){
+    private List<GitGroup> filterGroup(List<GitGroup> groups,List<String> cloneGroupIdList,List<String> excluGroupIdList,String groupUrlStr){
         List<GitGroup> filteredGroup = groups.stream().filter(group->!excluGroupIdList.contains(group.getId().toString())).collect(Collectors.toList());
+        if(!StringUtils.isEmpty(groupUrlStr)){
+            filteredGroup = filteredGroup.stream().filter(group->group.getWeb_url().contains(groupUrlStr)).collect(Collectors.toList());
+        }
+        
         if(CollectionUtils.isEmpty(cloneGroupIdList)){
             return filteredGroup;
         }
