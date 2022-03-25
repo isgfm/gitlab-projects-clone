@@ -255,4 +255,4 @@ public class GitlabProjectCloneService {
 
 ```
 
-代码github地址：[https://github.com/isgfm/gitlab-projects-clone.git](https://github.com/huchao1009/gitlab-projects-clone)
+代码github地址：[https://github.com/isgfm/gitlab-projects-clone.git](https://github.com/isgfm/gitlab-projects-clone.git)
