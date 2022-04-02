@@ -9,4 +9,5 @@ public class GitGroup {
     String path;
     String description;
     String web_url;
+    String parent_id;
 }

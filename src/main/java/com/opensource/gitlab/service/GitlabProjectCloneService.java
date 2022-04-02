@@ -11,8 +11,7 @@ import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.*;
 import org.springframework.stereotype.Service;
 import org.springframework.util.CollectionUtils;
-import org.springframework.util.StreamUtils;
-import org.springframework.util.StringUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.springframework.web.client.RestTemplate;
 
 import javax.annotation.PostConstruct;
@@ -52,6 +51,9 @@ public class GitlabProjectCloneService {
     
     @Value("${git.groupUrlStr}")
     private String groupUrlStr;
+    
+    @Value("${git.onlyCloneParentId}")
+    private Boolean onlyCloneParentId;
 
     ObjectMapper objectMapper = new ObjectMapper();
     
@@ -76,10 +78,17 @@ public class GitlabProjectCloneService {
         } catch (JsonProcessingException e) {
             e.printStackTrace();
         }
+        //已经clone的group ID
+        Set<Long> clonedGroupId = new HashSet<>();
         List<GitGroup> filterGroups = filterGroup(groups,cloneGroupIdList,excluGroupIdList,groupUrlStr);
-        for (GitGroup group : filterGroups) {
-            String groupId = group.getId().toString();
-            List<GitProject> projects = getProjectsByGroup(groupId);
+        Set<Long> groupIdSet = filterGroups.stream().map(GitGroup::getId).collect(Collectors.toSet());
+        //某些情况下没有吧groupid返回，放在了parentGroupId里面
+        Set<Long> parentGroupIdSet = filterGroups.stream().map(GitGroup::getParent_id).filter(StringUtils::isNotEmpty).map(Long::new).collect(Collectors.toSet());
+        if(!onlyCloneParentId){
+            parentGroupIdSet.addAll(groupIdSet);
+        }
+        for (Long groupId : parentGroupIdSet) {
+            List<GitProject> projects = getProjectsByGroup(groupId.toString());
             for (GitProject project : projects) {
                 if(excluProjectIdList.contains(project.getId().toString())){
                     continue;
